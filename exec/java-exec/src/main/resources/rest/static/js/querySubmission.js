@@ -95,7 +95,7 @@ function submitQuery() {
         data: $("#queryForm").serializeArray(),
         success: function (response) {
             closePopup();
-            var newDoc = document.open("text/html", "replace");
+            var newDoc = document.getElementById('query-results').contentWindow.document;
             newDoc.write(response);
             newDoc.close();
         },

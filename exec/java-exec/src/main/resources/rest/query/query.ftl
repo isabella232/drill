@@ -29,6 +29,9 @@
   <script src="/static/js/ace-code-editor/theme-sqlserver.js" type="text/javascript" charset="utf-8"></script>
   <script src="/static/js/ace-code-editor/snippets/sql.js" type="text/javascript" charset="utf-8"></script>
   <script src="/static/js/ace-code-editor/mode-snippets.js" type="text/javascript" charset="utf-8"></script>
+  <style>
+    html, body, .container-fluid[role=main], #query-body { height: 95%; }
+  </style>
 </#macro>
 
 <#macro page_body>
@@ -36,7 +39,7 @@
   </div>
   <div id="message" class="alert alert-info alert-dismissable" style="font-family: courier,monospace;">
     <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-    Sample SQL query: <strong>SELECT * FROM cp.`employee.json` LIMIT 20</strong>
+    Sample SQL query: <strong>SELECT * FROM kafka.topic_name LIMIT 20</strong>
   </div>
 
 <#include "*/alertModals.ftl">
@@ -50,41 +53,48 @@
      </div>
   </#if>
 
-  <form role="form" id="queryForm" action="/query" method="POST">
-      <div class="form-group">
-      <label for="queryType">Query Type</label>
-      <div class="radio">
-        <label>
-          <input type="radio" name="queryType" id="sql" value="SQL" checked>
-          SQL
-        </label>
-      </div>
-      <div class="radio">
-        <label>
-          <input type="radio" name="queryType" id="physical" value="PHYSICAL">
-          PHYSICAL
-        </label>
-      </div>
-      <div class="radio">
-        <label>
-          <input type="radio" name="queryType" id="logical" value="LOGICAL">
-          LOGICAL
-        </label>
-      </div>
-    </div>
-    <div class="form-group">
-      <div style="display: inline-block"><label for="query">Query</label></div>
-      <div style="display: inline-block; float:right; padding-right:5%"><b>Hint: </b>Use <div id="keyboardHint" style="display:inline-block; font-style:italic"></div> to submit</div>
-      <div id="query-editor-format"></div>
-      <input class="form-control" type="hidden" id="query" name="query" autofocus/>
-    </div>
+  <div id="query-body" style="display: flex;">
+    <div style="flex: 40%;">
+      <form role="form" id="queryForm" action="/query" method="POST">
+        <div class="form-group" style="display: none">
+          <label for="queryType">Query Type</label>
+          <div class="radio">
+            <label>
+              <input type="radio" name="queryType" id="sql" value="SQL" checked>
+              SQL
+            </label>
+          </div>
+          <div class="radio">
+            <label>
+              <input type="radio" name="queryType" id="physical" value="PHYSICAL">
+              PHYSICAL
+            </label>
+          </div>
+          <div class="radio">
+            <label>
+              <input type="radio" name="queryType" id="logical" value="LOGICAL">
+              LOGICAL
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <div style="display: inline-block"><label for="query">Query</label></div>
+          <div style="display: inline-block; float:right; padding-right:5%"><b>Hint: </b>Use <div id="keyboardHint" style="display:inline-block; font-style:italic"></div> to submit</div>
+          <div id="query-editor-format"></div>
+          <input class="form-control" type="hidden" id="query" name="query" autofocus/>
+        </div>
 
-    <button class="btn btn-default" type="button" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>">
-      Submit
-    </button>
-    <input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit results to <input type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"> rows <span class="glyphicon glyphicon-info-sign" title="Limits the number of records retrieved in the query. Ignored if query has a limit already" style="cursor:pointer"></span>
-    <input type="hidden" name="csrfToken" value="${model.getCsrfToken()}">
-  </form>
+        <button class="btn btn-default" type="button" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>">
+          Submit
+        </button>
+        <input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit results to <input type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"> rows <span class="glyphicon glyphicon-info-sign" title="Limits the number of records retrieved in the query. Ignored if query has a limit already" style="cursor:pointer"></span>
+        <input type="hidden" name="csrfToken" value="${model.getCsrfToken()}">
+      </form>
+    </div>
+    <div style="flex: 60%;">
+      <iframe id="query-results" style="border: none; height: 100%; width: 100%;"></iframe>
+    </div>
+  </div>
 
   <script>
     // Remember form field values over page reloads

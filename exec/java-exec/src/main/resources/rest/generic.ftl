@@ -65,6 +65,9 @@
             <ul class="nav navbar-nav">
               <li><a href="/query">Query</a></li>
               <li><a href="/profiles">Profiles</a></li>
+            </ul>
+            </#if>
+            <ul class="nav navbar-nav navbar-right">
               <#if showStorage == true>
               <li><a href="/storage">Storage</a></li>
               </#if>
@@ -75,9 +78,6 @@
               <#if showLogs == true>
                   <li><a href="/logs">Logs</a></li>
               </#if>
-            </ul>
-            </#if>
-            <ul class="nav navbar-nav navbar-right">
               <#if showOptions == true>
               <li><a href="/options">Options</a></li>
               </#if>
