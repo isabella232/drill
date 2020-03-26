@@ -50,6 +50,7 @@ public class MessageReaderFactory {
         logger.debug("Initialized Message Reader : {}", messageReader);
       }
     } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+      logger.error("Failed to instantiate message reader %s : %s", messageReaderKlass, e);
       throw UserException.validationError().message("Failed to initialize message reader : %s", messageReaderKlass)
           .build(logger);
     }

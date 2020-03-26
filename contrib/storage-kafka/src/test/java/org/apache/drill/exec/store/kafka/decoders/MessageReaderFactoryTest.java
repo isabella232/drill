@@ -68,4 +68,11 @@ public class MessageReaderFactoryTest extends BaseTest {
     MessageReader messageReader = MessageReaderFactory.getMessageReader(JsonMessageReader.class.getName());
     Assert.assertTrue(messageReader instanceof JsonMessageReader);
   }
+
+  @Test
+  public void testShouldReturnAvroMessageReaderInstance() {
+    String name = AvroMessageReader.class.getName();
+    MessageReader messageReader = MessageReaderFactory.getMessageReader("blah");
+    Assert.assertTrue(messageReader instanceof AvroMessageReader);
+  }
 }
