@@ -11,7 +11,10 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.JsonDecoder;
+import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.exec.store.easy.json.JsonProcessor;
+import org.apache.drill.exec.store.easy.json.reader.BaseJsonProcessor;
 import org.apache.drill.exec.store.kafka.KafkaStoragePlugin;
 import org.apache.drill.exec.store.kafka.ReadOptions;
 import org.apache.drill.exec.vector.complex.fn.JsonReader;
@@ -22,6 +25,18 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.drill.exec.store.kafka.MetaDataField.KAFKA_MSG_KEY;
+import static org.apache.drill.exec.store.kafka.MetaDataField.KAFKA_OFFSET;
+import static org.apache.drill.exec.store.kafka.MetaDataField.KAFKA_PARTITION_ID;
+import static org.apache.drill.exec.store.kafka.MetaDataField.KAFKA_TIMESTAMP;
+import static org.apache.drill.exec.store.kafka.MetaDataField.KAFKA_TOPIC;
+
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import io.netty.buffer.DrillBuf;
 
 public class AvroMessageReader implements MessageReader {
@@ -31,6 +46,7 @@ public class AvroMessageReader implements MessageReader {
   private VectorContainerWriter writer;
   private JsonReader jsonReader;
   private Schema schema;
+  private ObjectMapper objectMapper;
 
   @Override
   public void init(DrillBuf buf, List<SchemaPath> columns, VectorContainerWriter writer, ReadOptions readOptions) {
@@ -43,6 +59,9 @@ public class AvroMessageReader implements MessageReader {
       .enableNanInf(readOptions.isAllowNanInf())
       .enableEscapeAnyChar(readOptions.isAllowEscapeAnyChar())
       .build();
+    this.objectMapper = BaseJsonProcessor.getDefaultMapper()
+      .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, readOptions.isAllowNanInf())
+      .configure(JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, readOptions.isAllowEscapeAnyChar());
 
     logger.info("Initialized AvroMessageReader");
   }
@@ -63,7 +82,7 @@ public class AvroMessageReader implements MessageReader {
       return false;
     }
 
-    return commitMessage(decodedData.toString());
+    return commitMessage(decodedData.toString(), record);
   }
 
   @Override
@@ -91,7 +110,7 @@ public class AvroMessageReader implements MessageReader {
     return new Schema.Parser().parse("{\"type\":\"record\", \"name\":\"person\", \"fields\": [{\"name\":\"name\", \"type\":\"string\"}, {\"name\":\"age\", \"type\":\"int\"}]}");
   }
 
-  private boolean commitMessage(String data) {
+  private boolean commitMessage(String data, ConsumerRecord<?, ?> record) {
     try {
       JsonNode jsonNode = objectMapper.readTree(data);
       if (jsonNode != null && jsonNode.isObject()) {
@@ -116,6 +135,19 @@ public class AvroMessageReader implements MessageReader {
         .message("Failed to read " + message)
         .addContext("MessageReader", JsonMessageReader.class.getName())
         .build(logger);
+    }
+  }
+
+  private boolean convertJsonReadState(JsonProcessor.ReadState jsonReadState) {
+    switch (jsonReadState) {
+      case WRITE_SUCCEED:
+      case END_OF_STREAM:
+        return true;
+      case JSON_RECORD_PARSE_ERROR:
+      case JSON_RECORD_PARSE_EOF_ERROR:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unexpected JSON read state: " + jsonReadState);
     }
   }
 }
