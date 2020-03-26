@@ -5,12 +5,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryDecoder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.DecoderFactory;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.store.easy.json.JsonProcessor;
@@ -45,12 +42,10 @@ public class AvroMessageReader implements MessageReader {
 
   private VectorContainerWriter writer;
   private JsonReader jsonReader;
-  private Schema schema;
   private ObjectMapper objectMapper;
 
   @Override
   public void init(DrillBuf buf, List<SchemaPath> columns, VectorContainerWriter writer, ReadOptions readOptions) {
-    this.schema = getSchema();
     this.writer = writer;
     this.jsonReader = new JsonReader.Builder(buf)
       .schemaPathColumns(columns)
@@ -69,14 +64,13 @@ public class AvroMessageReader implements MessageReader {
   @Override
   public boolean readMessage(ConsumerRecord<?, ?> record) {
     byte[] binaryData = (byte[]) record.value();
-    // TODO: Use DrillbufInputStream 
-    InputStream inputStream = new ByteArrayInputStream(binaryData);
-    DatumReader<GenericRecord> reader = new GenericDatumReader<>(schema);
-    GenericRecord decodedData = null;
 
-    try {
-      BinaryDecoder binaryDecoder = DecoderFactory.get().binaryDecoder(inputStream, null);
-      decodedData = reader.read(null, binaryDecoder);
+    InputStream inputStream = new ByteArrayInputStream(binaryData);
+    GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
+    
+    GenericRecord decodedData = null;
+    try (DataFileStream<GenericRecord> streamReader = new DataFileStream<>(inputStream, datumReader)) {
+      decodedData = streamReader.next();
     } catch (IOException e) {
       logger.error("Failed to decode message: {}", e);
       return false;
@@ -104,10 +98,6 @@ public class AvroMessageReader implements MessageReader {
     } catch (Exception e) {
       logger.warn("Error while closing AvroMessageReader: {}", e.getMessage());
     }
-  }
-
-  private Schema getSchema() {
-    return new Schema.Parser().parse("{\"type\":\"record\", \"name\":\"person\", \"fields\": [{\"name\":\"name\", \"type\":\"string\"}, {\"name\":\"age\", \"type\":\"int\"}]}");
   }
 
   private boolean commitMessage(String data, ConsumerRecord<?, ?> record) {
