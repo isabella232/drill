@@ -8,9 +8,9 @@ import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.io.JsonDecoder;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.store.easy.json.JsonProcessor;
@@ -73,10 +73,10 @@ public class AvroMessageReader implements MessageReader {
     InputStream inputStream = new ByteArrayInputStream(binaryData);
     DatumReader<GenericRecord> reader = new GenericDatumReader<>(schema);
     GenericRecord decodedData = null;
+
     try {
-      // Marshal to java and then reuse code from JsonMessageReader
-      JsonDecoder jsonDecoder = DecoderFactory.get().jsonDecoder(schema, inputStream);
-      decodedData = reader.read(null, jsonDecoder);
+      BinaryDecoder binaryDecoder = DecoderFactory.get().binaryDecoder(inputStream, null);
+      decodedData = reader.read(null, binaryDecoder);
     } catch (IOException e) {
       logger.error("Failed to decode message: {}", e);
       return false;
