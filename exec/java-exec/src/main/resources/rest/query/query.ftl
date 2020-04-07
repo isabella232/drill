@@ -82,7 +82,17 @@
       Submit
     </button>
     <input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit results to <input type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"> rows <span class="glyphicon glyphicon-info-sign" title="Limits the number of records retrieved in the query. Ignored if query has a limit already" style="cursor:pointer"></span>
-    <label> Default Schema <input type="text" size="10" name="defaultSchema" id="defaultSchema"> </label>
+    <label> Default Schema </label>
+    <select name="defaultSchema" id="defaultSchema">
+      <#if model.getEnabledPlugins()?size gt 1>
+        <option value> -- select default schema -- </option>
+      </#if>
+      <#list model.getEnabledPlugins() as pluginModel>
+        <#if pluginModel.getPlugin()?? && pluginModel.getPlugin().enabled() == true>
+          <option value="${pluginModel.getPlugin().getName()}">${pluginModel.getPlugin().getName()}</option>
+        </#if>
+      </#list>
+    </select>
     <span class="glyphicon glyphicon-info-sign" title="Set the default schema used to find table names, and for SHOW FILES and SHOW TABLES" style="cursor:pointer"></span>
     <input type="hidden" name="csrfToken" value="${model.getCsrfToken()}">
   </form>
@@ -114,6 +124,10 @@
       } else {
         if (typeof savedValue === "string") {
           $input.val(savedValue);
+          // Reset to first option if saved value is no longer an option
+          if ($input.is("select") && $input.val() === null) {
+            $input.prop("selectedIndex", 0);
+          }
         }
         $input.change(function () {
           sessionStorage.setItem(savedKey, $(this).val());
