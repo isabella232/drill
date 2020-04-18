@@ -37,6 +37,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -105,7 +106,17 @@ public class QueryResources {
                               @FormParam("queryType") String queryType,
                               @FormParam("autoLimit") String autoLimit,
                               @FormParam("userName") String userName,
-                              @FormParam("defaultSchema") String defaultSchema) throws Exception {
+                              @FormParam("defaultSchema") String defaultSchema,
+                              @HeaderParam("X-Forwarded-Email") String email) throws Exception {
+    System.out.println("QUERY SUBMITTED");
+    System.out.println("email");
+    System.out.println(email);
+    System.out.println("username");
+    System.out.println(userName);
+    System.out.println("Done");
+    if (email != null) {
+      userName = email;
+    }
     try {
       // Apply options from the form fields, if provided
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
