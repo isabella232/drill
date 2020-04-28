@@ -36,7 +36,7 @@
   </div>
   <div id="message" class="alert alert-info alert-dismissable" style="font-family: courier,monospace;">
     <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-    Sample SQL query: <strong>SELECT * FROM cp.`employee.json` LIMIT 20</strong>
+    Sample SQL query: <strong>SELECT * FROM kafka.topic_name LIMIT 20</strong>
   </div>
 
 <#include "*/alertModals.ftl">
