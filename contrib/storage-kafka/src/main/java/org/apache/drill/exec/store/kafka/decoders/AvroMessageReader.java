@@ -1,12 +1,9 @@
 package org.apache.drill.exec.store.kafka.decoders;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
+import java.util.Properties;
 
-import org.apache.avro.file.DataFileStream;
-import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -16,9 +13,9 @@ import org.apache.drill.exec.store.kafka.KafkaStoragePlugin;
 import org.apache.drill.exec.store.kafka.ReadOptions;
 import org.apache.drill.exec.vector.complex.fn.JsonReader;
 import org.apache.drill.exec.vector.complex.impl.VectorContainerWriter;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,26 +60,22 @@ public class AvroMessageReader implements MessageReader {
 
   @Override
   public boolean readMessage(ConsumerRecord<?, ?> record) {
-    byte[] binaryData = (byte[]) record.value();
-
-    InputStream inputStream = new ByteArrayInputStream(binaryData);
-    GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
-    
-    GenericRecord decodedData = null;
-    try (DataFileStream<GenericRecord> streamReader = new DataFileStream<>(inputStream, datumReader)) {
-      decodedData = streamReader.next();
-    } catch (IOException e) {
-      logger.error("Failed to decode message: {}", e);
+    Object valObj = record.value();
+    if (!(valObj instanceof GenericRecord)) {
       return false;
     }
 
-    return commitMessage(decodedData.toString(), record);
+    GenericRecord value = (GenericRecord) valObj;
+
+    return commitMessage(value.toString(), record);
   }
 
   @Override
   public KafkaConsumer<byte[], byte[]> getConsumer(KafkaStoragePlugin plugin) {
-    return new KafkaConsumer<>(plugin.getConfig().getKafkaConsumerProps(),
-      new ByteArrayDeserializer(), new ByteArrayDeserializer());
+    Properties props = plugin.getConfig().getKafkaConsumerProps();
+    props.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.KafkaAvroDeserializer");
+    props.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+    return new KafkaConsumer<>(props);
   }
 
   @Override
